@@ -10,6 +10,19 @@ Registration)
 				p = random pixel
 				if 4(?) keypoints inside a circle of radius r with p in middle:
 					Calculate H and add to list
-	2) 
+	
+	2) Screen all the homographies. Deduplicate the remaining homographies
+	
+	   Screning) Screening removes 2 kinds of homographies. Those who will give unlikely to give realistic
+           	     images and those who are close to identity. 2 methods are used. The first is to checking the 
+				 difference between a similarity motion between the images. This is done like:
+					H_s = argmin(H_s) sum(norm(H_s*C_i - H*c_i)), where H_s = [a -b c; b a d]
+					if sum(norm(H_s*C_i - H*C_i)) < 0.01 discard H
+				 
+				 
+				 Checking the magnitude of the scaling 
+				 parameters. 
+				 
+	
 	3) 
 	

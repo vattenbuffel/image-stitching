@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
-from random import randrange
+from scipy import optimize
 
 print("Start!")
 
@@ -10,6 +10,7 @@ right_img2 = cv2.cvtColor(right_img1,cv2.COLOR_BGR2GRAY)
 left_img1 = cv2.imread("left.JPG")
 left_img2 = cv2.cvtColor(left_img1,cv2.COLOR_BGR2GRAY)
 
+# Finding homographies step
 
 sift = cv2.xfeatures2d.SIFT_create()
 # find the keypoints and descriptors with SIFT
@@ -61,7 +62,65 @@ for t in range(tau_H):
         H, masked = cv2.findHomography(kp1_in_distance, kp2_in_distance, cv2.RANSAC, 5.0)
         homographies.append(H)
 
+homographies = np.array(homographies)
 
 
+# Filtering step
+# Screening
+# Remove homographies which are unlikely to give realistic images
+threshold = 0.01 # 0.01 is a standard value 
+(x_max,y_max,z) = right_img1.shape
+corners = np.array([[0, 0, x_max, x_max], [0, y_max, y_max, 0], [1,1,1,1]])
+
+# Convert homogenous cooridnates to euclidian
+def homogenous_to_euclidian(x):
+    height, _  = x.shape
+    return np.true_divide(x[0:height-1, :], x[-1, :])
+
+# Helper function to convert 1D array to similarity matrix
+def convert_1D_array_to_similarity_matrix(x):
+    a = x[0]
+    b = x[1]
+    c = x[2]
+    d = x[4]
+    H_s = [[a, -b, c], [b, a, d], [0,0,1]]
+    return np.array(H_s)
+
+# Find the optimal similarity matrix. This is done by minimizing this function
+def difference_between_similarity_and_H(x, H):
+    H_s = convert_1D_array_to_similarity_matrix(x)
+
+    # Calculate the location of the corners
+    corners_H_s = np.matmul(H_s, corners)
+    corners_H = np.matmul(H, corners)
+    
+    # Convert from homogenous to euclidian
+    corners_H_s = homogenous_to_euclidian(corners_H_s)
+    corners_H = homogenous_to_euclidian(corners_H)
+
+    # Calculate the difference between the corners
+    diff = np.subtract(corners_H_s, corners_H)
+    norm = np.linalg.norm(diff, axis = 0)
+    return np.sum(norm)
+
+homographies_to_keep = []
+for i in range(homographies.shape[0]):
+    H = homographies[i]
+    x0 = [1, 1, 1, 1, 1]
+    H_s = optimize.fmin(difference_between_similarity_and_H, x0, disp = False, args = (H,))
+    
+    difference_normalized = difference_between_similarity_and_H(H_s, H) / (max_x*max_y) # It should be normalized by image size. It's a bit unclear what image size is though...
+    homographies_to_keep.append( difference_normalized< threshold)
+        
+homographies = homographies[homographies_to_keep,:,:]
+
+
+
+# Screening 
+# Remove homographies which are too close to identity
+
+
+
+# Remove duplicates
 
 print("Done!")
