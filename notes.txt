@@ -1,0 +1,15 @@
+Registration)
+	we use spatially varying non rigid transforms
+	3 steps: 1 homography finding 
+		     2 homography filtering 
+			 3 homography refinement
+	
+	1) Two images, I1, I2. Compute a set of keypoints which exists in both images (SIFT ?)
+	   Now compute homographies:
+			for T
+				p = random pixel
+				if 4(?) keypoints inside a circle of radius r with p in middle:
+					Calculate H and add to list
+	2) 
+	3) 
+	
