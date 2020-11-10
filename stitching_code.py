@@ -39,7 +39,7 @@ kp1_matching_KP = np.array([kp1[index] for index in index_in_kp1])
 # Generate list of homographies
 # Images need to be of same size
 homographies = []
-(max_x,max_y,z) = right_img1.shape
+(max_y,max_x,z) = right_img1.shape
 tau_H = 100
 allowed_distance = 25
 for t in range(tau_H):
@@ -69,7 +69,7 @@ homographies = np.array(homographies)
 # Screening
 # Remove homographies which are unlikely to give realistic images
 threshold = 0.01 # 0.01 is a standard value 
-(x_max,y_max,z) = right_img1.shape
+(y_max,x_max,z) = right_img1.shape
 corners = np.array([[0, 0, x_max, x_max], [0, y_max, y_max, 0], [1,1,1,1]])
 
 # Convert homogenous coordinates to euclidian
@@ -125,7 +125,55 @@ homographies = homographies[homographies_to_keep]
 
  
 # Remove homographies which are too close to identity
+# Do this by checking the overlap between I*H and I
+# Do that like this https://stackoverflow.com/questions/42402303/opencv-determine-area-of-intersect-overlap
+overlap_threshold = 0.95
+homographies_to_keep = []
 
+for H in homographies:
+    (y_max,x_max,z) = right_img1.shape
+    corners = np.array([[0, 0, x_max, x_max], [0, y_max, y_max, 0], [1,1,1,1]])
+
+    corners_H = np.matmul(H, corners)
+    corners_H = homogenous_to_euclidian(corners_H)
+
+    # Find the corners of the warped image
+    x_min_H = np.min(corners_H[0, :])
+    x_max_H = np.max(corners_H[0,:])
+    y_min_H = np.min(corners_H[1, :])
+    y_max_H = np.max(corners_H[1,:])
+
+    # Find the dimensions of the new image
+    x_min_res = np.minimum(0, x_min_H)
+    x_max_res = np.maximum(x_max, x_max_H)
+    y_min_res = np.minimum(0, y_min_H)
+    y_max_res = np.maximum(y_max, y_max_H)
+
+    res_img_width = x_max_res-x_min_res
+    res_img_height = y_max_res-y_min_res
+
+    # Handle the case where the homography maps to negative coordinates
+    # https://stackoverflow.com/questions/6087241/opencv-warpperspective
+    fix_matrix = np.identity(3)
+    if x_min_H < 0:
+        fix_matrix[0,2] = -x_min_H
+    if y_min_H < 0:
+        fix_matrix[1,2] = -y_min_H
+    H = np.matmul(H, fix_matrix)
+        
+    # Augment the image width and height to also incorporate the offset introduced above
+    res_img_width = np.ceil(res_img_width+np.abs(x_min_H * int(x_min_H<0))).astype('uint')
+    res_img_height = np.ceil(res_img_height+np.abs(y_min_H* int(y_min_H<0))).astype('uint')
+
+    # Warp the image
+    warped_image = cv2.warpPerspective(right_img1, H, (res_img_width, res_img_height))
+    warped_image[warped_image != 0] = 1
+    warped_image[0:y_max, 0:x_max] += 1
+    # cv2.imwrite("overlap.jpg", warped_image*127) # Not needed. Just shows the intersection result
+    intersected_area = np.sum(warped_image == 2)
+    total_area = np.sum(warped_image == 1) + intersected_area
+
+    homographies_to_keep.append(intersected_area/total_area < overlap_threshold)
 
 
 # Remove duplicates
