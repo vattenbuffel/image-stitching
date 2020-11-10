@@ -155,10 +155,14 @@ for H in homographies:
     # Handle the case where the homography maps to negative coordinates
     # https://stackoverflow.com/questions/6087241/opencv-warpperspective
     fix_matrix = np.identity(3)
+    x_origin = 0
+    y_origin = 0
     if x_min_H < 0:
         fix_matrix[0,2] = -x_min_H
+        x_origin = int(-x_min_H)
     if y_min_H < 0:
         fix_matrix[1,2] = -y_min_H
+        y_origin = int(-y_min_H)
     H = np.matmul(H, fix_matrix)
         
     # Augment the image width and height to also incorporate the offset introduced above
@@ -168,13 +172,14 @@ for H in homographies:
     # Warp the image
     warped_image = cv2.warpPerspective(right_img1, H, (res_img_width, res_img_height))
     warped_image[warped_image != 0] = 1
-    warped_image[0:y_max, 0:x_max] += 1
-    # cv2.imwrite("overlap.jpg", warped_image*127) # Not needed. Just shows the intersection result
+    warped_image[y_origin:y_origin+y_max, x_origin:x_origin+x_max] += 1
+    cv2.imwrite("overlap.jpg", warped_image*127) # Not needed. Just shows the intersection result
     intersected_area = np.sum(warped_image == 2)
     total_area = np.sum(warped_image == 1) + intersected_area
 
     homographies_to_keep.append(intersected_area/total_area < overlap_threshold)
 
+homographies = homographies[homographies_to_keep]
 
 # Remove duplicates
 
