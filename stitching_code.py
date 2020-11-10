@@ -130,10 +130,11 @@ homographies = homographies[homographies_to_keep]
 overlap_threshold = 0.95
 homographies_to_keep = []
 
-for H in homographies:
-    (y_max,x_max,z) = right_img1.shape
-    corners = np.array([[0, 0, x_max, x_max], [0, y_max, y_max, 0], [1,1,1,1]])
+(y_max,x_max,z) = right_img1.shape
+corners = np.array([[0, 0, x_max, x_max], [0, y_max, y_max, 0], [1,1,1,1]])
+corner_locations = []
 
+for H in homographies:
     corners_H = np.matmul(H, corners)
     corners_H = homogenous_to_euclidian(corners_H)
 
@@ -142,6 +143,9 @@ for H in homographies:
     x_max_H = np.max(corners_H[0,:])
     y_min_H = np.min(corners_H[1, :])
     y_max_H = np.max(corners_H[1,:])
+
+    # Save the corners for future calculations
+    corner_locations.append([[x_min_H, x_min_H, x_max_H, x_max_H], [y_min_H, y_max_H, y_max_H, y_min_H]])
 
     # Find the dimensions of the new image
     x_min_res = np.minimum(0, x_min_H)
@@ -173,12 +177,23 @@ for H in homographies:
     warped_image = cv2.warpPerspective(right_img1, H, (res_img_width, res_img_height))
     warped_image[warped_image != 0] = 1
     warped_image[y_origin:y_origin+y_max, x_origin:x_origin+x_max] += 1
-    cv2.imwrite("overlap.jpg", warped_image*127) # Not needed. Just shows the intersection result
+    #cv2.imwrite("overlap.jpg", warped_image*127) # Not needed. Just shows the intersection result
     intersected_area = np.sum(warped_image == 2)
     total_area = np.sum(warped_image == 1) + intersected_area
 
     homographies_to_keep.append(intersected_area/total_area < overlap_threshold)
 
+homographies = homographies[homographies_to_keep]
+
+# Remove homographies where either diagonal is shorter than half the length of the diagonal of the original image
+original_diagonal = np.linalg.norm(right_img2.shape)
+corner_locations = np.array(corner_locations)
+
+upper_left_to_lower_right = np.subtract(corner_locations[:, :, 2], corner_locations[:, :, 0])
+lower_left_to_upper_right = np.subtract(corner_locations[:, :, 3], corner_locations[:, :, 1])
+diagonal_distances = np.array([np.linalg.norm(upper_left_to_lower_right, axis=1), np.linalg.norm(lower_left_to_upper_right, axis=1)])
+homographies_to_keep = diagonal_distances < original_diagonal/2
+homographies_to_keep = np.logical_or(homographies_to_keep[0,:], homographies_to_keep[1,:])
 homographies = homographies[homographies_to_keep]
 
 # Remove duplicates
