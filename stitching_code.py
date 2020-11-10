@@ -56,8 +56,8 @@ for t in range(tau_H):
         kp1_in_distance = kp1_matching[extraction_rule]
         kp2_in_distance = kp2_matching[extraction_rule]
         
-        outImage = cv2.drawKeypoints(right_img1, list(kp1_matching_KP[extraction_rule]), right_img1)
-        cv2.imwrite("keypoints.jpg", outImage) 
+        #outImage = cv2.drawKeypoints(right_img1, list(kp1_matching_KP[extraction_rule]), right_img1)
+        #cv2.imwrite("keypoints.jpg", outImage) 
 
         H, masked = cv2.findHomography(kp1_in_distance, kp2_in_distance, cv2.RANSAC, 5.0)
         homographies.append(H)
@@ -72,7 +72,7 @@ threshold = 0.01 # 0.01 is a standard value
 (x_max,y_max,z) = right_img1.shape
 corners = np.array([[0, 0, x_max, x_max], [0, y_max, y_max, 0], [1,1,1,1]])
 
-# Convert homogenous cooridnates to euclidian
+# Convert homogenous coordinates to euclidian
 def homogenous_to_euclidian(x):
     height, _  = x.shape
     return np.true_divide(x[0:height-1, :], x[-1, :])
@@ -115,8 +115,15 @@ for i in range(homographies.shape[0]):
 homographies = homographies[homographies_to_keep,:,:]
 
 
+# Remove homographies which the magnitude of the scaling parameters is bigger than a threshold
+# I'm not sure if this is correct or not
+magnitude_threshold = 1.2 # I have no idea what this should be
+scales = np.matmul(homographies, corners[:,2])
+homographies_to_keep = np.absolute(scales[:, -1]) < magnitude_threshold # Shouldn't there be a minimum threshold as well?
+homographies = homographies[homographies_to_keep]
+    
 
-# Screening 
+ 
 # Remove homographies which are too close to identity
 
 
