@@ -77,6 +77,11 @@ def homogenous_to_euclidian(x):
     height, _  = x.shape
     return np.true_divide(x[0:height-1, :], x[-1, :])
 
+# Convert euclidian coordinates to homogenous
+def euclidian_to_homogenous(x):
+    _, width  = x.shape
+    return np.vstack([x, np.ones((1, width))])
+
 # Helper function to convert 1D array to similarity matrix
 def convert_1D_array_to_similarity_matrix(x):
     a = x[0]
@@ -103,24 +108,24 @@ def difference_between_similarity_and_H(x, H):
     norm = np.linalg.norm(diff, axis = 0)
     return np.sum(norm)
 
-homographies_to_keep = []
+homographies_to_keep_similarity = []
 for i in range(homographies.shape[0]):
     H = homographies[i]
     x0 = [1, 1, 1, 1, 1]
     H_s = optimize.fmin(difference_between_similarity_and_H, x0, disp = False, args = (H,))
     
     difference_normalized = difference_between_similarity_and_H(H_s, H) / (max_x*max_y) # It should be normalized by image size. It's a bit unclear what image size is though...
-    homographies_to_keep.append( difference_normalized< threshold)
+    homographies_to_keep_similarity.append( difference_normalized< threshold)
         
-homographies = homographies[homographies_to_keep,:,:]
+homographies = homographies[homographies_to_keep_similarity,:,:]
 
 
 # Remove homographies which the magnitude of the scaling parameters is bigger than a threshold
 # I'm not sure if this is correct or not
 magnitude_threshold = 1.2 # I have no idea what this should be
 scales = np.matmul(homographies, corners[:,2])
-homographies_to_keep = np.absolute(scales[:, -1]) < magnitude_threshold # Shouldn't there be a minimum threshold as well?
-homographies = homographies[homographies_to_keep]
+homographies_to_keep_scale = np.absolute(scales[:, -1]) < magnitude_threshold # Shouldn't there be a minimum threshold as well?
+homographies = homographies[homographies_to_keep_scale]
     
 
  
@@ -128,7 +133,7 @@ homographies = homographies[homographies_to_keep]
 # Do this by checking the overlap between I*H and I
 # Do that like this https://stackoverflow.com/questions/42402303/opencv-determine-area-of-intersect-overlap
 overlap_threshold = 0.95
-homographies_to_keep = []
+homographies_to_keep_identity = []
 
 (y_max,x_max,z) = right_img1.shape
 corners = np.array([[0, 0, x_max, x_max], [0, y_max, y_max, 0], [1,1,1,1]])
@@ -181,21 +186,92 @@ for H in homographies:
     intersected_area = np.sum(warped_image == 2)
     total_area = np.sum(warped_image == 1) + intersected_area
 
-    homographies_to_keep.append(intersected_area/total_area < overlap_threshold)
+    homographies_to_keep_identity.append(intersected_area/total_area < overlap_threshold)
 
-homographies = homographies[homographies_to_keep]
+homographies = homographies[homographies_to_keep_identity]
 
 # Remove homographies where either diagonal is shorter than half the length of the diagonal of the original image
 original_diagonal = np.linalg.norm(right_img2.shape)
-corner_locations = np.array(corner_locations)
+corner_locations = np.array(corner_locations)[homographies_to_keep_identity]# Only continue with the corners which have a connected homography
 
 upper_left_to_lower_right = np.subtract(corner_locations[:, :, 2], corner_locations[:, :, 0])
 lower_left_to_upper_right = np.subtract(corner_locations[:, :, 3], corner_locations[:, :, 1])
 diagonal_distances = np.array([np.linalg.norm(upper_left_to_lower_right, axis=1), np.linalg.norm(lower_left_to_upper_right, axis=1)])
-homographies_to_keep = diagonal_distances < original_diagonal/2
-homographies_to_keep = np.logical_or(homographies_to_keep[0,:], homographies_to_keep[1,:])
-homographies = homographies[homographies_to_keep]
+homographies_to_keep_diagonal = diagonal_distances > (original_diagonal/2)
+homographies_to_keep_diagonal = np.logical_or(homographies_to_keep_diagonal[0,:], homographies_to_keep_diagonal[1,:])
+homographies = homographies[homographies_to_keep_diagonal]
 
 # Remove duplicates
+# I'm not entierly sure what the reprojection error is...
+# Calculate D_0
+reprojection_error_threshold = 10 # No idea what this should be
+inclusion_radius = 25 # No idea what this should be
+cosine_similarity_threshold = 0.6 # No idea what this should be
+max_number_of_homograhpies = 10000 # No idea what this should be
+
+homo_kp1 = euclidian_to_homogenous(np.transpose(kp1_matching))
+kp1_in_img2 = np.matmul(homographies, homo_kp1)
+kp1_in_img2 = np.array([np.true_divide(kp1_in_img2[i,0:2,:], kp1_in_img2[i,-1,:]) for i in range(kp1_in_img2.shape[0])])
+normal_format_kp2 = np.transpose(kp2_matching)
+reprojection_error_block_distance = np.subtract(kp1_in_img2, normal_format_kp2)
+reprojection_error = np.linalg.norm(reprojection_error_block_distance, axis=1)
+matching_key_point_to_D_0 = reprojection_error < reprojection_error_threshold
+
+D_t_index = matching_key_point_to_D_0
+done = False
+
+while not done:
+    starting_number_of_elements = np.sum(D_t_index)
+
+    for i in range(D_t_index.shape[0]):
+        points_in_D_t = kp1_matching[np.argwhere(D_t_index[i])].reshape(-1,2)
+        points_not_in_D_t = kp1_matching[np.argwhere(np.logical_not(D_t_index[i]))].reshape(-1,2)
+
+        # If all points already in D_t[i] then move on
+        if points_not_in_D_t.size == 0:
+            continue
+
+        # The following code is really, really hard to understand
+        matrix_with_points_on_row = np.repeat(kp1_matching[np.argwhere(D_t_index[i])], points_not_in_D_t.shape[0], axis=0).reshape(-1, points_not_in_D_t.shape[0]*2)
+        matrix_with_block_distances = np.subtract(matrix_with_points_on_row, points_not_in_D_t.reshape(1,-1))
+        vectors_with_block_distance = np.array(np.hsplit(matrix_with_block_distances, points_not_in_D_t.shape[0]))#.reshape(points_not_in_D_t.shape[0],points_in_D_t.shape[0],-1)
+        distance = np.linalg.norm(vectors_with_block_distance, axis = 2)
+        matching_points_to_add_to_D_t = distance < inclusion_radius
+        points_inside_r = np.sum(matching_points_to_add_to_D_t, axis=1)>0
+        
+        tested_points = np.argwhere(np.logical_not(D_t_index[i])).reshape(-1)
+        D_t_index[i][tested_points] =  np.logical_or(D_t_index[i][tested_points], points_inside_r)
+
+    done = starting_number_of_elements == np.sum(D_t_index)
+
+# Create indicator vectors
+# The indicator vectors are just D_t_index
+
+# Save homographies based on |D_t| and cosine distance
+D_t_euclidian_distance_block = [np.subtract(kp1_matching[x], kp2_matching[x]) for x in D_t_index]
+D_t_euclidian_distance = [np.linalg.norm(D_t_euclidian_distance_block[i], axis=1) for i in range(D_t_index.shape[0])]
+D_t_euclidian_distance_sum = np.array([np.sum(distances) for distances in D_t_euclidian_distance])
+D_t_euclidian_distance_ordered = np.flip(np.sort(D_t_euclidian_distance_sum))
+
+def cosine_distance(x, y):
+    return np.dot(x, y) / (np.sqrt(np.dot(x, x)) * np.sqrt(np.dot(y, y)))
+
+homographies_to_keep_distance = [np.where(D_t_euclidian_distance_sum == D_t_euclidian_distance_ordered[0])[0][0]] # Always save the homography with the biggest |D_t|
+for distance in D_t_euclidian_distance_ordered:
+    contender_index = np.where(D_t_euclidian_distance_sum == distance)[0][0]
+    
+    # Check the cosine distance
+    contender_indicator_vector = D_t_index[contender_index]
+    add = True
+    for already_saved in homographies_to_keep_distance:
+        already_saved_indicator_vector = D_t_index[already_saved]
+        if cosine_distance(contender_indicator_vector, already_saved_indicator_vector) > cosine_similarity_threshold:
+            add = False
+            break
+    
+    if add: homographies_to_keep_distance.append(contender_index)
+
+homographies = homographies[homographies_to_keep_distance]
+
 
 print("Done!")
