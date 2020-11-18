@@ -117,7 +117,7 @@ for i in range(n_rows*n_cols):
 
     # Undistort
     z = 1/(1+lambda_*(x**2+y**2))
-    x*=z
+    x*=z 
     y*=z
 
     x_min = x if x < x_min else x_min
