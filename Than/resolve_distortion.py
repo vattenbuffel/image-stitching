@@ -64,7 +64,7 @@ def resolve_dist(src, k1):
     dst = cv2.undistort(src, cam, distCoeff)
     return dst
 
-src_dir = './img/ze/4.jpg'
+src_dir = './img/ze/1.jpg'
 
 src = cv2.imread(src_dir)
 
@@ -96,7 +96,7 @@ dst = resolve_dist(src,init_k1*4)
 
 dst_t = cv2.resize(dst,(int(dst.shape[1]*0.5),int(dst.shape[0]*0.5)))
 src_t = cv2.resize(src,(int(src.shape[1]*0.5),int(src.shape[0]*0.5)))
-cv2.imwrite('./img/resolved/4r.jpg',dst)
+cv2.imwrite('./img/resolved/1r.jpg',dst)
 cv2.imshow('src',src_t)
 cv2.imshow('dst',dst_t)
 cv2.waitKey(0)
