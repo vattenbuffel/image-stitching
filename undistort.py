@@ -114,9 +114,10 @@ good_eig_vals = eig_vals[good_eig_vals]
 good_eig_vals = np.ndarray.astype(good_eig_vals, dtype='float')
 
 # Undistort the image
-# I use the first eig val here
-lambda_ = good_eig_vals[2]
-f = good_eig_vectors[2, 0:9]
+# I use the biggest eig val here
+biggest_eig_val_index = np.argmax(np.abs(good_eig_vals))
+lambda_ = good_eig_vals[biggest_eig_val_index]
+f = good_eig_vectors[biggest_eig_val_index, 0:9]
 
 
 # Create an array containing the locations of the points in the first image
@@ -140,17 +141,10 @@ for i in range(n_rows*n_cols): #This for loop is an abomination and should be re
     x*=z*(n_rows+n_cols)
     y*=z*(n_rows+n_cols)
 
-    # p[0,i] = x
-    # p[1,i] = y
     p1[0,i] = x
     p1[1,i] = y
 
 p2 = p1
-    #return p, lambda_, f
-
-
-# p_img1, lambda_, f = find_p(left_img2, right_img2)
-# p_img2, lambda_, f = find_p(right_img2, left_img2) # With this left_img2 is the second image
 
 p_img1 = p1
 p_img2 = p2
@@ -159,8 +153,7 @@ p_img1 = euclidian_to_homogenous_2D(p_img1)
 p_img2 = euclidian_to_homogenous_2D(p_img2)
 
 
-# Solve the minimization problem
-
+# Solve the minimization problem, equation 5 in the paper
 F = f.reshape(3,3)
 def epipolar_constraint(x):
     x_in_img1 = x[0:3]
@@ -190,12 +183,10 @@ def fun_to_minimize(x, args):
 p_in_img1_min = p_img1.transpose()
 p_in_img2_min = p_img2.transpose()
 
-
+# Convert the newly found minimized coordinates to euclidian
 p_in_img1_min = homogenous_to_euclidian_2D(np.array(p_in_img1_min).transpose())
-#p_in_img2_min = homogenous_to_euclidian_2D(p_in_img2_min)
-
+p_in_img1_min = np.round(p_in_img1_min)
 p_in_img1_min = np.ndarray.astype(p_in_img1_min, dtype='int')
-#p_in_img2_min = np.ndarray.astype(p_in_img2_min, dtype='int')
 
 
 # Create a cv img where the undistorted image gets the correct colors, from the distorted image
@@ -217,6 +208,9 @@ for i,p in enumerate(new_img.transpose()): # should be able to just do undistort
     y_distorted_image = i//n_cols_distorted
 
     undistorted_image[p[1], p[0]] = right_img2[y_distorted_image,x_distorted_image]
+
+# Average the pixels in the image to get rid of black lines
+#undistorted_image = cv2.medianBlur(undistorted_image,5) # The image needs to rgb for this to work
 
 cv2.imwrite("undistorted.jpg", undistorted_image) 
 print(undistorted_image.shape)
