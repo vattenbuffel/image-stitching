@@ -29,6 +29,8 @@ dim = (width, height)
 # resize image
 right_img2 = cv2.resize(right_img2, dim, interpolation = cv2.INTER_AREA)
 left_img2 = cv2.resize(left_img2, dim, interpolation = cv2.INTER_AREA)
+right_img1 = cv2.resize(right_img1, dim, interpolation = cv2.INTER_AREA)
+left_img1 = cv2.resize(left_img1, dim, interpolation = cv2.INTER_AREA)
 
 img1 = right_img2
 img2 = left_img2
@@ -202,16 +204,9 @@ n_cols_undistorted = int(x_max-x_min+1)
 new_img = (p_in_img1_min.transpose() - np.array([x_min, y_min], dtype='int')).transpose()
 
 
-undistorted_image = np.zeros((n_rows_undistorted, n_cols_undistorted))
-for i,p in enumerate(new_img.transpose()): # should be able to just do undistorted_image[new_img[1], new_img[0]] = right_img2?, maybe it should be left_image?
-    x_distorted_image = i%n_cols_distorted
-    y_distorted_image = i//n_cols_distorted
-
-    undistorted_image[p[1], p[0]] = right_img2[y_distorted_image,x_distorted_image]
-
-# Average the pixels in the image to get rid of black lines
-#undistorted_image = cv2.medianBlur(undistorted_image,5) # The image needs to rgb for this to work
-
+undistorted_image = np.zeros((n_rows_undistorted, n_cols_undistorted, 3))
+undistorted_image[new_img[1], new_img[0]] = right_img1.reshape(-1,3)
 cv2.imwrite("undistorted.jpg", undistorted_image) 
-print(undistorted_image.shape)
+
+
 print('Done!')
