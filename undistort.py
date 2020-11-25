@@ -4,6 +4,7 @@ import cv2
 import numpy as np
 import scipy.linalg as scipy_linalg
 from scipy import optimize
+import numpy.matlib as npm
 
 # Convert 2D homogenous coordinates to euclidian
 def homogenous_to_euclidian_2D(x):
@@ -128,13 +129,10 @@ n_cols = img1.shape[1]
 p_img1 = np.zeros((3, np.prod(img1.shape)))
 p_img2 = np.zeros((3, np.prod(img1.shape)))
 
-import numpy.matlib as npm
 # create the different x_coordinates and y_coordinates values and normalize them
 x_coordinates = (np.arange(n_cols) - x_max/2)/(n_rows+n_cols)
-# x_coordinates = np.arange(n_cols)
 x_coordinates = npm.repmat(x_coordinates, 1, n_rows)
 y_coordinates = (np.arange(n_rows) - y_max/2)/(n_rows+n_cols)
-#y_coordinates = np.arange(n_rows)
 y_coordinates = npm.repmat(y_coordinates.reshape(-1,1), 1, n_cols).reshape(-1)
 
 p_img1[0] = x_coordinates
@@ -144,34 +142,12 @@ p_img1[1] = y_coordinates
 p_img1[2] = (1 + lambda_*(p_img1[0]**2+p_img1[1]**2))
 bajs = p_img1
 p_img1 = np.true_divide(p_img1[0:2, :], p_img1[2])
-p_img2 = p_img1
 
 # Scale back the coordinates
 p_img1[0] *= (n_rows+n_cols)
 p_img1[1] *= (n_rows+n_cols)
+p_img2 = p_img1
 
-p1 = np.zeros((2, np.prod(img1.shape)))
-p2 = np.zeros((2, np.prod(img1.shape)))
-for i in range(n_rows*n_cols): #This for loop is an abomination and should be removed
-    x = i%n_cols# - x_max/2
-    y = i//n_cols# - y_max/2
-
-    # x/= (n_rows+n_cols)
-    # y/= (n_rows+n_cols)
-
-
-    # Undistort
-    # z = 1/(1+lambda_*(x**2+y**2))
-    # x*=z*(n_rows+n_cols)
-    # y*=z*(n_rows+n_cols)
-
-    p1[0,i] = x
-    p1[1,i] = y
-
-p2 = p1
-
-# p_img1 = p1
-# p_img2 = p2
 
 p_img1 = euclidian_to_homogenous_2D(p_img1)
 p_img2 = euclidian_to_homogenous_2D(p_img2)
