@@ -23,7 +23,7 @@ left_img1 = cv2.imread("left.JPG")
 left_img2 = cv2.cvtColor(left_img1,cv2.COLOR_BGR2GRAY)
 
 # This should be removed
-scale_percent = 200 # percent of original size
+scale_percent = 100 # percent of original size
 width = int(right_img2.shape[1] * scale_percent / 100)
 height = int(right_img2.shape[0] * scale_percent / 100)
 dim = (width, height)
@@ -57,7 +57,7 @@ kp2_matching = np.array([np.array(list(kp2[index].pt)) for index in index_in_kp2
 
 
 # Plot the matching keypoints
-matching_keypoints_img = cv2.drawMatchesKnn(img1, kp1, img2, kp2, good_matches, img1, flags=2) # This plots way too many line for some reason
+matching_keypoints_img = cv2.drawMatches(img1, kp1, img2, kp2, good_matches[:,0], img1, flags=2) # This plots way too many line for some reason
 cv2.imwrite("matching_keypoints.jpg", matching_keypoints_img) 
 
 
@@ -116,18 +116,34 @@ good_eig_vectors = eig_vectors[good_eig_vals]
 good_eig_vals = eig_vals[good_eig_vals]
 good_eig_vals = np.ndarray.astype(good_eig_vals, dtype='float')
 
-# Undistort the image
-# I use the biggest eig val here
-biggest_eig_val_index = np.argmax(np.abs(good_eig_vals))
-lambda_ = good_eig_vals[biggest_eig_val_index]
-f = good_eig_vectors[biggest_eig_val_index, 0:9]
 
+# Find the best lambda/undistort value by finding the one that minimizes a modified version of equation 5 in the paper
+error_values = []
+for lambda_ in good_eig_vals:
+    # Undistort the matching keypoints
+    z_kp1 = (1 + lambda_*(kp1_matching[0]**2+kp1_matching[1]**2))
+    z_kp2 = (1 + lambda_*(kp2_matching[0]**2+kp2_matching[1]**2))
+
+    p_kp1 = np.true_divide(kp1_matching[0:2, :], z_kp1)
+    p_kp2 = np.true_divide(kp2_matching[0:2, :], z_kp2)
+
+    H, masked = cv2.findHomography(p_kp1.transpose(), p_kp2.transpose(), cv2.RANSAC, 5.0)
+    p_kp1_in_img2 = cv2.perspectiveTransform(p_kp1.transpose().reshape(-1,1,2),H).reshape(-1,2).transpose()
+
+    block_error = p_kp1_in_img2 - p_kp2
+    euclidian_error = np.linalg.norm(block_error)
+    error_values.append(euclidian_error)
+
+# The best lambda is the one where the error is the smallest
+smallest_err_index = np.argmin(np.abs(error_values))
+lambda_ = good_eig_vals[smallest_err_index]
+
+# Undistort the image
 n_rows = img1.shape[0]
 n_cols = img1.shape[1]
 
 # Calculate locations of p in img1 and img2
 p_img1 = np.zeros((3, np.prod(img1.shape)))
-p_img2 = np.zeros((3, np.prod(img1.shape)))
 
 # create the different x_coordinates and y_coordinates values and normalize them
 x_coordinates = (np.arange(n_cols) - x_max/2)/(n_rows+n_cols)
@@ -140,67 +156,26 @@ p_img1[1] = y_coordinates
 
 # Undistort the coordinates
 p_img1[2] = (1 + lambda_*(p_img1[0]**2+p_img1[1]**2))
-bajs = p_img1
 p_img1 = np.true_divide(p_img1[0:2, :], p_img1[2])
 
 # Scale back the coordinates
 p_img1[0] *= (n_rows+n_cols)
 p_img1[1] *= (n_rows+n_cols)
-p_img2 = p_img1
 
-
-p_img1 = euclidian_to_homogenous_2D(p_img1)
-p_img2 = euclidian_to_homogenous_2D(p_img2)
-
-
-# Solve the minimization problem, equation 5 in the paper
-F = f.reshape(3,3)
-def epipolar_constraint(x):
-    x_in_img1 = x[0:3]
-    x_in_img2 = x[3:]
-
-    res = np.matmul(F, x_in_img1)
-    res = np.matmul(x_in_img2.transpose(), res)
-    return res
-
-cons = {'type':'eq', 'fun':epipolar_constraint}
-
-def fun_to_minimize(x, args):
-    x_in_img1 = x[0:3]
-    x_in_img2 = x[3:]
-    p_in_img1 = args[0]
-    p_in_img2 = args[1]
-
-    return np.dot(p_in_img2-x_in_img2, p_in_img2-x_in_img2) + np.dot(p_in_img1-x_in_img1, p_in_img1-x_in_img1)
-
-# p_in_img1_min = []
-# p_in_img2_min = []
-# for i in range(p_img1.shape[1]): # This takes an ungodly amount of time. It is not feasible to do it like this. If I try to bunch it all up into 1 step. Then it would require several TB of memory.
-#     x0 = [p_img1[:,i], p_img2[:,i]]
-#     sol = optimize.minimize(fun_to_minimize, x0, args=x0, constraints=cons)
-#     p_in_img1_min.append(sol.x[0:3])
-#     p_in_img2_min.append(sol.x[3:])
-p_in_img1_min = p_img1.transpose()
-p_in_img2_min = p_img2.transpose()
-
-
-# Convert the newly found minimized coordinates to euclidian
-p_in_img1_min = homogenous_to_euclidian_2D(np.array(p_in_img1_min).transpose())
-p_in_img1_min = np.round(p_in_img1_min)
-p_in_img1_min = np.ndarray.astype(p_in_img1_min, dtype='int')
-
+p_img1 = np.round(p_img1)
+p_img1 = np.ndarray.astype(p_img1, dtype='int')
 
 # Create a cv img where the undistorted image gets the correct colors, from the distorted image
 n_cols_distorted = right_img2.shape[1]
 
-x_max = p_in_img1_min[0].max()
-x_min = p_in_img1_min[0].min()
-y_max = p_in_img1_min[1].max()
-y_min = p_in_img1_min[1].min()
+x_max = p_img1[0].max()
+x_min = p_img1[0].min()
+y_max = p_img1[1].max()
+y_min = p_img1[1].min()
 
 n_rows_undistorted = int(y_max-y_min+1)
 n_cols_undistorted = int(x_max-x_min+1)
-new_img = (p_in_img1_min.transpose() - np.array([x_min, y_min], dtype='int')).transpose()
+new_img = (p_img1.transpose() - np.array([x_min, y_min], dtype='int')).transpose()
 
 
 undistorted_image = np.zeros((n_rows_undistorted, n_cols_undistorted, 3))
