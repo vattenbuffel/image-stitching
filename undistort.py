@@ -17,9 +17,9 @@ def euclidian_to_homogenous_2D(x):
     return np.vstack([x, np.ones((1, width))])
 
 
-right_img1 = cv2.imread("right.JPG")
+right_img1 = cv2.imread("./raw_img/1.JPG")
 right_img2 = cv2.cvtColor(right_img1,cv2.COLOR_BGR2GRAY)
-left_img1 = cv2.imread("left.JPG")
+left_img1 = cv2.imread("./raw_img/2.JPG")
 left_img2 = cv2.cvtColor(left_img1,cv2.COLOR_BGR2GRAY)
 
 # This should be removed
@@ -191,7 +191,7 @@ new_img = (p_img1.transpose() - np.array([x_min, y_min], dtype='int')).transpose
 
 undistorted_image = np.zeros((n_rows_undistorted, n_cols_undistorted, 3))
 undistorted_image[new_img[1], new_img[0]] = right_img1.reshape(-1,3)
-cv2.imwrite("undistorted.jpg", undistorted_image) 
+cv2.imwrite("undistorted1.jpg", undistorted_image)
 
 
 print('Done!')
