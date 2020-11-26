@@ -19,9 +19,6 @@ good = []
 for m,n in matches:
     if m.distance < 0.7*n.distance:
         good.append(m)
-matches = sorted(matches, key = lambda x:(x[0].distance - x[1].distance)**2, reverse=True)
-matches = np.array(matches)
-good_noa = matches[0:8]
 
 
 if len(good)>MIN_MATCH_COUNT:
@@ -41,6 +38,6 @@ draw_params = dict(matchColor = (0,255,0), # draw matches in green color
 # img3 = cv.drawMatches(img1,kp1,img2,kp2,good_noa[:,0],None)
 # img3 = cv.drawMatches(img1,kp1,img2,kp2,good,None, **draw_params)
 
-good_matches = np.array(good)[matchesMask]
+good_matches = np.array(good)[np.argwhere(np.array(matchesMask)).reshape(-1)]
 img3 = cv.drawMatches(img1,kp1,img2,kp2,good_matches,None)
 plt.imshow(img3),plt.show()

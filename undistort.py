@@ -42,24 +42,35 @@ sift = cv2.xfeatures2d.SIFT_create()
 kp1, des1 = sift.detectAndCompute(img1,None)
 kp2, des2 = sift.detectAndCompute(img2,None)
 
-# Only get the matching keypoints
-bf = cv2.BFMatcher()
-matchesbf = bf.knnMatch(des1,des2, k=2)
-# Sort the keypoints so that those with smallest distance between them come at top
-matches = sorted(matchesbf, key = lambda x:(x[0].distance - x[1].distance)**2, reverse=True)
-matches = np.array(matches)
-good_matches = matches[0:8]
+# Find the inliers using ransac
+FLANN_INDEX_KDTREE = 1
+index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 5)
+search_params = dict(checks = 50)
+flann = cv2.FlannBasedMatcher(index_params, search_params)
+matches = flann.knnMatch(des1,des2,k=2)
+# store all the good matches as per Lowe's ratio test.
+good = []
+for m,n in matches:
+    if m.distance < 0.7*n.distance:
+        good.append(m)
 
-index_in_kp1 = [m.queryIdx for m in good_matches[:,0]]
-index_in_kp2 = [m.trainIdx for m in good_matches[:,0]]
-kp1_matching = np.array([np.array(list(kp1[index].pt)) for index in index_in_kp1]).transpose()
-kp2_matching = np.array([np.array(list(kp2[index].pt)) for index in index_in_kp2]).transpose()
 
+src_pts = np.float32([ kp1[m.queryIdx].pt for m in good ]).reshape(-1,1,2)
+dst_pts = np.float32([ kp2[m.trainIdx].pt for m in good ]).reshape(-1,1,2)
+M, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC,5.0)
+matchesMask = mask.ravel().tolist()
 
-# Plot the matching keypoints
-matching_keypoints_img = cv2.drawMatches(img1, kp1, img2, kp2, good_matches[:,0], img1, flags=2) # This plots way too many line for some reason
+draw_params = dict(matchColor = (0,255,0), # draw matches in green color
+                   singlePointColor = None,
+                   flags = 2)
+
+good_matches = np.array(good)[np.argwhere(np.array(matchesMask)).reshape(-1)]
+matching_keypoints_img = cv2.drawMatches(img1,kp1,img2,kp2,good_matches,None, **draw_params)
 cv2.imwrite("matching_keypoints.jpg", matching_keypoints_img) 
 
+# Extract the matching keypoints, ie inliners
+kp1_matching = np.array([np.array(list(kp1[match.queryIdx].pt)) for match in good_matches]).transpose()
+kp2_matching = np.array([np.array(list(kp2[match.trainIdx].pt)) for match in good_matches]).transpose()
 
 # Move the image origin to the center of the image
 y_max, x_max = img1.shape
