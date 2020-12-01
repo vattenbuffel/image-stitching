@@ -204,7 +204,7 @@ r_u = np.linalg.norm(x_u, axis=0)
 
 # The second step is to solve the inverse of the distortion model. This is done according to the paper
 if lambda_ > 0: # pincushion distortion
-    r_d = 1/(2*lambda_*r_u) + (1/(4*lambda_**2*r_u**2) - 1/lambda_)**0.5 # This is the bigger of the solutions. The paper uses the smaller. hmmmm
+    r_d = 1/(2*lambda_*r_u) - (1/(4*lambda_**2*r_u**2) - 1/lambda_)**0.5 
 else: # barrel distortion
     r_d = 1/(2*lambda_*r_u) + (1/(4*lambda_**2*r_u**2) - 1/lambda_)**0.5 
 
