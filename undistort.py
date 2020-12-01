@@ -35,6 +35,8 @@ left_img1 = cv2.resize(left_img1, dim, interpolation = cv2.INTER_AREA)
 
 img1 = right_img2
 img2 = left_img2
+img1_rgb = right_img1
+img2_rgb = left_img1
 ##########################################################
 
 sift = cv2.xfeatures2d.SIFT_create()
@@ -96,7 +98,6 @@ D2 = np.array([np.zeros((n_rows, )), np.zeros((n_rows, )), np.multiply(x_2, r_1*
 D3 = np.array([np.zeros((n_rows, )), np.zeros((n_rows, )), np.zeros((n_rows, )), np.zeros((n_rows, )), np.zeros((n_rows, )), np.zeros((n_rows, )), np.zeros((n_rows, )), np.zeros((n_rows, )), np.multiply(r_2**2, r_1**2)]).transpose()
 
 
-
 # To solve the polynomial eigen value problem black magic is necessary, https://octave.1599824.n4.nabble.com/Quadratic-Eigen-value-problems-td1626007.html
 A = np.matmul(D1.transpose(), D1)
 B = np.matmul(D1.transpose(), D2)
@@ -154,7 +155,7 @@ n_rows = img1.shape[0]
 n_cols = img1.shape[1]
 
 # Calculate locations of p in img1 and img2
-p_img1 = np.zeros((3, np.prod(img1.shape)))
+p_img1 = np.zeros((2, np.prod(img1.shape)))
 
 # create the different x_coordinates and y_coordinates values and normalize them
 x_coordinates = (np.arange(n_cols) - x_max/2)/(n_rows+n_cols)
@@ -166,8 +167,8 @@ p_img1[0] = x_coordinates
 p_img1[1] = y_coordinates
 
 # Undistort the coordinates
-p_img1[2] = (1 + lambda_*(p_img1[0]**2+p_img1[1]**2))
-p_img1 = np.true_divide(p_img1[0:2, :], p_img1[2])
+z_values = (1 + lambda_*(p_img1[0]**2+p_img1[1]**2))
+p_img1 = np.true_divide(p_img1[0:2, :], z_values)
 
 # Scale back the coordinates
 p_img1[0] *= (n_rows+n_cols)
@@ -177,7 +178,7 @@ p_img1 = np.round(p_img1)
 p_img1 = np.ndarray.astype(p_img1, dtype='int')
 
 # Create a cv img where the undistorted image gets the correct colors, from the distorted image
-n_cols_distorted = right_img2.shape[1]
+n_cols_distorted = img1.shape[1]
 
 x_max = p_img1[0].max()
 x_min = p_img1[0].min()
@@ -190,8 +191,6 @@ new_img = (p_img1.transpose() - np.array([x_min, y_min], dtype='int')).transpose
 
 
 undistorted_image = np.zeros((n_rows_undistorted, n_cols_undistorted, 3))
-undistorted_image[new_img[1], new_img[0]] = right_img1.reshape(-1,3)
+undistorted_image[new_img[1], new_img[0]] = img1_rgb.reshape(-1,3)
 cv2.imwrite("undistorted.jpg", undistorted_image) 
 
-
-print('Done!')
