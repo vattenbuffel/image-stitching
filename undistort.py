@@ -17,9 +17,9 @@ def euclidian_to_homogenous_2D(x):
     return np.vstack([x, np.ones((1, width))])
 
 
-right_img1 = cv2.imread("./raw_img/1.JPG")
+right_img1 = cv2.imread("right.JPG")
 right_img2 = cv2.cvtColor(right_img1,cv2.COLOR_BGR2GRAY)
-left_img1 = cv2.imread("./raw_img/2.JPG")
+left_img1 = cv2.imread("left.JPG")
 left_img2 = cv2.cvtColor(left_img1,cv2.COLOR_BGR2GRAY)
 
 # This should be removed
