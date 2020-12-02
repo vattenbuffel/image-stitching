@@ -3,6 +3,7 @@ import cv2
 import os
 import time
 import numpy as np
+from undistort import Undistorter
 
 ##############################################################
 ## Here is to place functions
@@ -58,6 +59,30 @@ def create_vid(temp_dir, FPS):
     out.release()
     return None
 
+def create_undistorters(frames):
+    undistorters = []
+    n_frames = len(frames)
+    for i in range(n_frames):
+        if i == 0:
+            left = frames[i]
+            right = frames[-1]
+        else:
+            left = frames[i]
+            right = frames[0]
+        undistorter_temp = Undistorter(right,left)
+        undistorters.append(undistorter_temp)
+    return undistorters
+
+def undistort_frames(frames,undistorters):
+    n_frames = len(frames)
+    undis_frames = []
+    for i in range(n_frames):
+        frame = frames[i]
+        undistorter = undistorters[i]
+        undistorted_temp = undistorter.undistort(frame)
+        undis_frames.append(undistorted_temp)
+    return undis_frames
+
 ##############################################################
 tic = time.perf_counter()
 print('Start...')
@@ -85,8 +110,8 @@ print('FPS :' + str(fps))
 not_first_frame = False
 rets,frames = extract_frames(caps)
 
-## Extract lambda from images in frames: input = frames, output = lambda
-####### to-be-done
+## Extract lambda from images in frames: input = frames, output = undistorters
+undistorters = create_undistorters(frames)
 
 ## Create folder to store stitched frames
 os.mkdir(temp_dir)
@@ -110,7 +135,7 @@ while all(rets):
         not_first_frame = True
 
     ## Undistored frames: input = frames, output = undistored_frames
-    ####### to-be-done
+    undistorted_frames = undistort_frames(frames,undistorters)
 
     ## Solve black line: input = undistorted_frames, output = solved_frames
     ####### to-be-done
@@ -121,7 +146,7 @@ while all(rets):
 
     ## Just a dummy function (concat 4 frames tgt)
     frames_resize = [cv2.resize(frame, (0, 0), fx=0.5, fy=0.5)
-                      for frame in frames]
+                      for frame in undistorted_frames]
     final_frame = concat_tile([[frames_resize[0],frames_resize[1]],[frames_resize[2],frames_resize[3]]])
 
     ## Write final_frame into temp folder
