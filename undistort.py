@@ -238,7 +238,7 @@ class Undistorter:
         self.pixels_to_fill = np.ndarray.astype(pixels_to_fill, dtype='int')
 
         # Save undistorted_image for undistortion later
-        self.undistorted_image = np.zeros((y_max_original, x_max_original, 3))
+        self.undistorted_image = np.zeros((y_max_original, x_max_original, 3), dtype='uint8')
 
     def undistort(self, img):    
         """

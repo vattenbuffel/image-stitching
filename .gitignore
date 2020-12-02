@@ -1,6 +1,8 @@
 notes.txt
 test.py
 undistort.m
+videos
+*.avi
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
