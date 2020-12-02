@@ -130,3 +130,9 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# video file: Cus it's too big
+./raw_video/my_video-1.mkv
+./raw_video/my_video-2.mkv
+./raw_video/my_video-3.mkv
+./raw_video/my_video-4.mkv
