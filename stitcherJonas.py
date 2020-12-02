@@ -1,20 +1,49 @@
 import cv2
 import numpy as np
 import sys
-
+import matplotlib.pyplot as plt
+import apriltag
+from detectTags import detectTags
+# pip install apriltag
 
 class Image_Stitching():
     def __init__(self):
-        self.ratio = 0.7
+        self.ratio = 0.6
         self.min_match = 10
-        self.sift = cv2.xfeatures2d.SIFT_create()
+        self.sift = cv2.xfeatures2d.SIFT_create(400)
         self.smoothing_window_size = 800
 
     def registration(self, img1, img2):
+        # Detect aprilstags in both images
+        """options = apriltag.DetectorOptions(families="tag36h11")
+        detector = apriltag.Detector(options)
+
+        grayImg1 = cv2.cvtColor(img1, cv2.COLOR_BGR2GRAY)
+        grayImg1 = np.array(grayImg1, dtype="uint8")
+        grayImg2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
+        grayImg2 = np.array(grayImg2, dtype="uint8")
+
+        tagsImage1 = detector.detect(grayImg1)
+        tagsImage2 = detector.detect(grayImg2)
+        print(tagsImage1.shape)"""
+
+        maskedImg1 = detectTags(img1)
+        maskedImg2 = detectTags(img2)
+        #plt.imshow(maskedImg2), plt.show()
+
         kp1, des1 = self.sift.detectAndCompute(img1, None)
         kp2, des2 = self.sift.detectAndCompute(img2, None)
-        matcher = cv2.BFMatcher()
-        raw_matches = matcher.knnMatch(des1, des2, k=2)
+
+        FLANN_INDEX_KDTREE = 1
+        index_params = dict(algorithm=FLANN_INDEX_KDTREE, trees=5)
+        search_params = dict(checks=50)
+
+        flann = cv2.FlannBasedMatcher(index_params, search_params)
+
+        #matcher = cv2.BFMatcher()
+        #raw_matches = matcher.knnMatch(des1, des2, k=2)
+        raw_matches = flann.knnMatch(des1, des2, k=2)
+
         good_points = []
         good_matches = []
         for m1, m2 in raw_matches:
@@ -23,6 +52,7 @@ class Image_Stitching():
                 good_matches.append([m1])
         img3 = cv2.drawMatchesKnn(img1, kp1, img2, kp2, good_matches, None, flags=2)
         cv2.imwrite('matching.jpg', img3)
+        print(len(good_points))
         if len(good_points) > self.min_match:
             image1_kp = np.float32(
                 [kp1[i].pt for (_, i) in good_points])
@@ -51,15 +81,18 @@ class Image_Stitching():
     def blending(self, img1, img2):
         H = self.registration(img1, img2)
         height_img1 = img1.shape[0]
+        #height_img2 = img2.shape[0]
         width_img1 = img1.shape[1]
         width_img2 = img2.shape[1]
         height_panorama = height_img1
         width_panorama = width_img1 + width_img2
 
         panorama1 = np.zeros((height_panorama, width_panorama, 3))
+
         mask1 = self.create_mask(img1, img2, version='left_image')
         panorama1[0:img1.shape[0], 0:img1.shape[1], :] = img1
-        panorama1 *= mask1
+        #plt.imshow(panorama1), plt.show()
+        panorama1[0:img1.shape[0], :, :] *= mask1
         mask2 = self.create_mask(img1, img2, version='right_image')
         panorama2 = cv2.warpPerspective(img2, H, (width_panorama, height_panorama)) * mask2
 
@@ -73,12 +106,11 @@ class Image_Stitching():
 
 
 def main():
-    img1 = cv2.imread('img_F/4.jpg')
-    img2 = cv2.imread('img_F/2.jpg')
+    img1 = cv2.imread('panorama1.jpg')
+    img2 = cv2.imread('panorama2.jpg')
     final = Image_Stitching().blending(img1, img2)
     cv2.imwrite('panorama.jpg', final)
-
-
+    return final
 if __name__ == '__main__':
     try:
         #main(sys.argv[1], sys.argv[2])
