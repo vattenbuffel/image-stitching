@@ -145,7 +145,7 @@ class Undistorter:
         assigned manually."""
         i = 1 # Just to track how often this problem is encountered
         if not error_values:
-            lambda_ = 0.5
+            lambda_ = -2.5
             print('No error_vales found for the ', i, ' time.')
             i += 1
         else:
