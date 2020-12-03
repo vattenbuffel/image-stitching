@@ -108,6 +108,7 @@ temp_dir = './temp'
 ## Get file list from folder
 vid_names = os.listdir(videos_dir)
 
+
 ## Get rid off readme.txt
 for name in vid_names:
     if name.endswith(".txt"):
@@ -127,6 +128,12 @@ rets,frames = extract_frames(caps)
 
 ## Extract lambda from images in frames: input = frames, output = undistorters
 undistorters = create_undistorters(frames)
+
+## Check if there is temp folder there already?
+current_names = os.listdir()
+if 'temp' in current_names:
+    empthy_folder(temp_dir)
+    os.removedirs(temp_dir)
 
 ## Create folder to store stitched frames
 os.mkdir(temp_dir)

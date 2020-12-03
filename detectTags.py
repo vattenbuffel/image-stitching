@@ -11,8 +11,7 @@ def detectTags(image):
 
     aruco_dict = aruco.Dictionary_get(aruco.DICT_7X7_1000)
     parameters = aruco.DetectorParameters_create()
-    corners, ids, rejectedImgPoints = aruco.detectMarkers(
-        image, aruco_dict, parameters=parameters)
+    corners, ids, rejectedImgPoints = aruco.detectMarkers(image, aruco_dict, parameters=parameters)
 
     mask = np.zeros([w,h, 3], dtype="uint8")
     for marker in rejectedImgPoints:
