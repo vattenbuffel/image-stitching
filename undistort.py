@@ -141,8 +141,17 @@ class Undistorter:
             error_values.append(euclidian_error)
 
         # The best lambda is the one where the error is the smallest
-        smallest_err_index = np.argmin(np.abs(error_values))
-        lambda_ = good_eig_vals[smallest_err_index]
+        """ Wrapping this in an if statement for the time being. In the case error_values is empty a lambda needs to be 
+        assigned manually."""
+        i = 1 # Just to track how often this problem is encountered
+        if not error_values:
+            lambda_ = 0.5
+            print('No error_vales found for the ', i, ' time.')
+            i += 1
+        else:
+            smallest_err_index = np.argmin(np.abs(error_values))
+            lambda_ = good_eig_vals[smallest_err_index]
+
 
         # Color correct
         # Find the max and min coordiantes. They are either on the middle of the edges or in the corners
