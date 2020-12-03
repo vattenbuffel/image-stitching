@@ -6,8 +6,8 @@ from detectTags import detectTags
 
 class Image_Stitching():
     def __init__(self):
-        self.ratio = 0.6
-        self.min_match = 10
+        self.ratio = 0.7
+        self.min_match = 9
         self.sift = cv2.xfeatures2d.SIFT_create()
         self.smoothing_window_size = 800
 
@@ -29,8 +29,8 @@ class Image_Stitching():
         maskedImg2 = detectTags(img2)
         #plt.imshow(maskedImg2), plt.show()
 
-        kp1, des1 = self.sift.detectAndCompute(maskedImg1, None)
-        kp2, des2 = self.sift.detectAndCompute(maskedImg2, None)
+        kp1, des1 = self.sift.detectAndCompute(img1, None)
+        kp2, des2 = self.sift.detectAndCompute(img2, None)
 
         FLANN_INDEX_KDTREE = 1
         index_params = dict(algorithm=FLANN_INDEX_KDTREE, trees=5)
@@ -76,8 +76,13 @@ class Image_Stitching():
             mask[:, barrier + offset:] = 1
         return cv2.merge([mask, mask, mask])
 
-    def blending(self, img1, img2):
-        H = self.registration(img1, img2)
+    def blending(self, img1, img2, homography=None):
+        if homography is None:
+            H = self.registration(img1, img2)
+            print('here')
+        else:
+            H = homography
+
         height_img1 = img1.shape[0]
         #height_img2 = img2.shape[0]
         width_img1 = img1.shape[1]
@@ -100,20 +105,15 @@ class Image_Stitching():
         min_row, max_row = min(rows), max(rows) + 1
         min_col, max_col = min(cols), max(cols) + 1
         final_result = result[min_row:max_row, min_col:max_col, :]
-        return final_result
+        return final_result, H #if homography is None else final_result
 
 
-def main(img1, img2):
-    #img1 = cv2.imread('panorama1.jpg')
-    #img2 = cv2.imread('panorama2.jpg')
-    final = Image_Stitching().blending(img1, img2)
-    #cv2.imwrite('panorama.jpg', final)
+def main():
+    img1 = cv2.imread('3.jpg')
+    img2 = cv2.imread('1.jpg')
+    final, H = Image_Stitching().blending(img1, img2, [])
+    cv2.imwrite('panorama24.jpg', final)
     return final
 if __name__ == '__main__':
-    try:
-        #main(sys.argv[1], sys.argv[2])
-        main()
-    except IndexError:
-        print("Please input two source images: ")
-        print(
-            "For example: python Image_Stitching.py '/Users/linrl3/Desktop/picture/p1.jpg' '/Users/linrl3/Desktop/picture/p2.jpg'")
+    #main(sys.argv[1], sys.argv[2])
+    main()
