@@ -3,7 +3,9 @@ import cv2
 import os
 import time
 import numpy as np
+import cv2.aruco as aruco
 from undistort import Undistorter
+from stitchAndBlend import Image_Stitching
 
 ##############################################################
 ## Here is to place functions
@@ -83,6 +85,19 @@ def undistort_frames(frames,undistorters):
         undis_frames.append(undistorted_temp)
     return undis_frames
 
+
+def stitch_and_blend(frames):
+    stitcher = Image_Stitching()
+    n_frames = len(frames)
+    frame_temp1 = frames[0]
+    frame_temp2 = frames[1]
+    final_frame = stitcher.blending(frame_temp1,frame_temp2)
+    for i in range(n_frames-2):
+        frame_temp = frames[i+2]
+        final_frame = stitcher.blending(final_frame,frame_temp)
+
+    return final_frame
+
 ##############################################################
 tic = time.perf_counter()
 print('Start...')
@@ -137,21 +152,20 @@ while all(rets):
     ## Undistored frames: input = frames, output = undistored_frames
     undistorted_frames = undistort_frames(frames,undistorters)
 
-    ## Solve black line: input = undistorted_frames, output = solved_frames
-    ####### to-be-done
-
-    ## Stitch + Blend: input = solved_frames, output = final_frames
-    ####### to-be-done
-
+    ## Stitch + Blend: input = undistored_frames, output = final_frames
+    # Still got some error about H somewhere.
+    final_frame = stitch_and_blend(undistorted_frames)
 
     ## Just a dummy function (concat 4 frames tgt)
-    frames_resize = [cv2.resize(frame, (0, 0), fx=0.5, fy=0.5)
-                      for frame in undistorted_frames]
-    final_frame = concat_tile([[frames_resize[0],frames_resize[1]],[frames_resize[2],frames_resize[3]]])
+    # frames_resize = [cv2.resize(frame, (0, 0), fx=0.5, fy=0.5)
+    #                   for frame in undistorted_frames]
+    # final_frame = concat_tile([[frames_resize[0],frames_resize[1]],[frames_resize[2],frames_resize[3]]])
 
     ## Write final_frame into temp folder
     # The reason is this could save RAM from being full.
     # Pad 0 in front of the number. Work only until 10 million frames.
+
+    ## If the result is too big>> Add resize
     frame_id_pad = "{0:08}".format(frame_id)
     cv2.imwrite(temp_dir+'/temp'+ frame_id_pad + '.jpeg', final_frame)
 
