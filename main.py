@@ -66,6 +66,7 @@ def create_undistorters(frames):
     n_frames = len(frames)
     for i in range(n_frames):
         done = False
+        undistorter_temp = None
         while not done:
             indices = np.random.randint(0, n_frames, 2)
             img1 = frames[indices[0]]
@@ -76,8 +77,7 @@ def create_undistorters(frames):
                 done = True
             except:
                 pass
-
-            undistorters.append(undistorter_temp)
+        undistorters.append(undistorter_temp)
     return undistorters
 
 def undistort_frames(frames,undistorters):

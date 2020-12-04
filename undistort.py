@@ -122,10 +122,6 @@ class Undistorter:
         good_eig_vals = eig_vals[good_eig_vals]
         good_eig_vals = np.ndarray.astype(good_eig_vals, dtype='float')
 
-        #if(len(good_eig_vals) < 1):
-            #Exception("Bad images. Can't undistort")
-
-
         # Find the best lambda/undistort value by finding the one that minimizes a modified version of equation 5 in the paper
         error_values = []
         for lambda_ in good_eig_vals:
@@ -144,12 +140,9 @@ class Undistorter:
             error_values.append(euclidian_error)
 
         # The best lambda is the one where the error is the smallest
-        # if error_values.__len__() > 0:
-        #     smallest_err_index = np.argmin(np.abs(error_values))
-        # else:
-        #     Exception("ERROR: Undistorter can't calculate a good lambda values. The images are bad.")
         smallest_err_index = np.argmin(np.abs(error_values))
         lambda_ = good_eig_vals[smallest_err_index]
+        self.lambda_ = lambda_
 
 
         # Color correct
