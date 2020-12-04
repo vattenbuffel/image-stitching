@@ -3,6 +3,7 @@ test.py
 undistort.m
 videos
 *.avi
+*.mkv
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

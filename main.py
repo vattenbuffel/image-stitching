@@ -65,14 +65,19 @@ def create_undistorters(frames):
     undistorters = []
     n_frames = len(frames)
     for i in range(n_frames):
-        if i == 0:
-            left = frames[i]
-            right = frames[-1]
-        else:
-            left = frames[i]
-            right = frames[0]
-        undistorter_temp = Undistorter(right,left)
-        undistorters.append(undistorter_temp)
+        done = False
+        while not done:
+            indices = np.random.randint(0, n_frames, 2)
+            img1 = frames[indices[0]]
+            img2 = frames[indices[1]]
+
+            try: 
+                undistorter_temp = Undistorter(img1,img2)
+                done = True
+            except:
+                pass
+
+            undistorters.append(undistorter_temp)
     return undistorters
 
 def undistort_frames(frames,undistorters):
@@ -108,6 +113,10 @@ temp_dir = './temp'
 ## Get file list from folder
 vid_names = os.listdir(videos_dir)
 
+# If too few videos were found
+if len(vid_names) < 2:
+    print("ERROR: Couldn't find 2 videos in directory",videos_dir)
+    exit()
 
 ## Get rid off readme.txt
 for name in vid_names:

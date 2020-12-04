@@ -122,6 +122,9 @@ class Undistorter:
         good_eig_vals = eig_vals[good_eig_vals]
         good_eig_vals = np.ndarray.astype(good_eig_vals, dtype='float')
 
+        #if(len(good_eig_vals) < 1):
+            #Exception("Bad images. Can't undistort")
+
 
         # Find the best lambda/undistort value by finding the one that minimizes a modified version of equation 5 in the paper
         error_values = []
@@ -141,16 +144,12 @@ class Undistorter:
             error_values.append(euclidian_error)
 
         # The best lambda is the one where the error is the smallest
-        """ Wrapping this in an if statement for the time being. In the case error_values is empty a lambda needs to be 
-        assigned manually."""
-        i = 1 # Just to track how often this problem is encountered
-        if not error_values:
-            lambda_ = -2.5
-            print('No error_vales found for the ', i, ' time.')
-            i += 1
-        else:
-            smallest_err_index = np.argmin(np.abs(error_values))
-            lambda_ = good_eig_vals[smallest_err_index]
+        # if error_values.__len__() > 0:
+        #     smallest_err_index = np.argmin(np.abs(error_values))
+        # else:
+        #     Exception("ERROR: Undistorter can't calculate a good lambda values. The images are bad.")
+        smallest_err_index = np.argmin(np.abs(error_values))
+        lambda_ = good_eig_vals[smallest_err_index]
 
 
         # Color correct
@@ -188,10 +187,16 @@ class Undistorter:
         # Create the different x_coordinates and y_coordinates values
         dx = (x_max_undistorted-x_min_undistorted)/x_max_original
         x_coordinates = np.arange(x_min_undistorted, x_max_undistorted, dx) 
+        # BUG: x_coordinates sometimes gets 1 element too many
+        if x_coordinates.size > x_max_original:
+            x_coordinates = x_coordinates[0:x_max_original]
         x_coordinates = npm.repmat(x_coordinates, 1, y_max_original).reshape(-1)
 
         dy = (y_max_undistorted-y_min_undistorted)/y_max_original
         y_coordinates = np.arange(y_min_undistorted, y_max_undistorted, dy) 
+        # BUG: y_coordinates sometimes gets 1 element too many
+        if y_coordinates.size > y_max_original:
+            y_coordinates = y_coordinates[0:y_max_original]
         y_coordinates = npm.repmat(y_coordinates.reshape(-1,1), 1, x_max_original).reshape(-1)
 
 
