@@ -12,10 +12,10 @@ size = (width, height)
 undistorter = Undistorter(right, left)
 
 # This reads the video
-vid1 = cv2.VideoCapture('./videos/vid1.mkv')
+vid1 = cv2.VideoCapture('./raw_video/my_video-1.mkv')
 
 # This will create the video
-out = cv2.VideoWriter('undistorted_vid1.avi',cv2.VideoWriter_fourcc(*'DIVX'), 15, size)
+out = cv2.VideoWriter('./raw_video/undistorted_vid1.avi',cv2.VideoWriter_fourcc(*'DIVX'), 15, size)
 
 counter = 0
 # Loop over the video and undistort it

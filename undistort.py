@@ -257,15 +257,15 @@ class Undistorter:
 
 
 if __name__ == "__main__":
-    print("Hello!\nI will now load two images called right.JPG and left.JPG and undistort them.\nMake sure they exist!")
-    right = cv2.imread("right.JPG")
-    left = cv2.imread("left.JPG")
+    print("Hello!\nI will now load two images called img1.JPG and img2.JPG and undistort them.\nMake sure they exist!")
+    img1 = cv2.imread("img1.JPG")
+    img2 = cv2.imread("img2.JPG")
 
-    undistorter = Undistorter(right, left)
+    undistorter = Undistorter(img1, img2, True)
 
-    right_undistorted = undistorter.undistort(right)
-    left_undistorted = undistorter.undistort(left)
+    img1_undistorted = undistorter.undistort(img1)
 
-    cv2.imwrite("right_undistorted.jpg", right_undistorted) 
-    cv2.imwrite("left_undistorted.jpg", left_undistorted) 
+    cv2.imwrite("img1_undistorted.jpg", img1_undistorted) 
+    img2_undistorted = undistorter.undistort(img2)
+    cv2.imwrite("img2_undistorted.jpg", img2_undistorted) 
     print('Done!')

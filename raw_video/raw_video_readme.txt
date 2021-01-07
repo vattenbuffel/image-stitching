@@ -1,3 +1,4 @@
-Here is to add video to be stitch.
+def find_hidden_num_cells(cells):
+    return check_correctness_cells(cells)
+    
 
-Each video must be sync (Start at the same time) and have the same length.

@@ -1,6 +1,6 @@
 notes.txt
 test.py
-undistort.m
+*.m
 videos
 *.avi
 *.mkv
